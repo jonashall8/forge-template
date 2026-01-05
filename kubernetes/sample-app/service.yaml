@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-microservice
+  namespace: applications
+  labels:
+    app: sample-microservice
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/actuator/prometheus"
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: sample-microservice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-microservice-headless
+  namespace: applications
+  labels:
+    app: sample-microservice
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+  selector:
+    app: sample-microservice
+

@@ -1,0 +1,29 @@
+# Project Forge - Development Environment Configuration
+# Copy this file to terraform.tfvars and modify as needed
+
+aws_region   = "us-east-1"
+project_name = "project-forge"
+environment  = "dev"
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# Cost Optimization for Dev
+enable_nat_gateway = true
+single_nat_gateway = true
+enable_flow_logs   = true
+
+# EKS Configuration
+kubernetes_version  = "1.29"
+public_access_cidrs = ["0.0.0.0/0"]  # Restrict in production
+
+# Node Group Configuration
+node_instance_types = ["t3.medium"]
+node_desired_size   = 2
+node_min_size       = 1
+node_max_size       = 4
+
+# Optional: Deploy ECS cluster
+deploy_ecs = false
+

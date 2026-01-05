@@ -1,0 +1,216 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  JAVA_VERSION: '17'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build and test Java Observability SDK
+  build-sdk:
+    name: Build Observability SDK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: java-observability-sdk
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean verify -B
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sdk-test-results
+          path: java-observability-sdk/target/surefire-reports/
+
+      - name: Upload SDK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: observability-sdk
+          path: java-observability-sdk/target/*.jar
+
+  # Build and test Sample Microservice
+  build-microservice:
+    name: Build Sample Microservice
+    runs-on: ubuntu-latest
+    needs: build-sdk
+    defaults:
+      run:
+        working-directory: sample-microservice
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: observability-sdk
+          path: java-observability-sdk/target/
+
+      - name: Install SDK to local repository
+        run: |
+          cd ../java-observability-sdk
+          mvn install -DskipTests -B
+
+      - name: Build microservice
+        run: mvn clean package -DskipTests -B
+
+      - name: Run tests
+        run: mvn test -B
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-microservice
+          path: sample-microservice/target/*.jar
+
+  # Build Docker image
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: build-microservice
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/sample-microservice
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sample-microservice
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Validate Terraform
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Validate Networking Module
+        run: |
+          cd modules/networking
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate EKS Module
+        run: |
+          cd modules/eks-cluster
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate ECS Module
+        run: |
+          cd modules/ecs-cluster
+          terraform init -backend=false
+          terraform validate
+
+      - name: Validate State Backend Module
+        run: |
+          cd modules/state-backend
+          terraform init -backend=false
+          terraform validate
+
+  # Validate Kubernetes manifests
+  validate-kubernetes:
+    name: Validate Kubernetes Manifests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubeconform
+        run: |
+          curl -L https://github.com/yannh/kubeconform/releases/download/v0.6.3/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate manifests
+        run: |
+          kubeconform -summary -output json kubernetes/
+
+  # Validate Helm charts
+  validate-helm:
+    name: Validate Helm Charts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.0
+
+      - name: Lint Helm chart
+        run: helm lint helm/observability-stack/
+

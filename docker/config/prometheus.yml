@@ -1,0 +1,34 @@
+# Prometheus configuration for local development
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'local'
+    environment: 'dev'
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Sample Microservice
+  - job_name: 'sample-microservice'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['sample-microservice:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: '([^:]+):\d+'
+        replacement: '${1}'
+
+  # Docker containers (if using cAdvisor)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metric_relabel_configs:
+      - source_labels: [container_name]
+        regex: '/'
+        action: drop
+

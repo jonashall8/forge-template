@@ -1,0 +1,20 @@
+# KubeLinter configuration for Project Forge
+# https://docs.kubelinter.io/
+
+checks:
+  # Include all default checks
+  addAllBuiltIn: true
+  
+  # Exclude specific checks
+  exclude:
+    - "unset-cpu-requirements"  # We use LimitRange for defaults
+    - "unset-memory-requirements"
+
+# Custom check configurations
+customChecks: []
+
+# Ignore specific paths
+ignore:
+  paths:
+    - "helm/**"  # Helm templates have Go templating syntax
+

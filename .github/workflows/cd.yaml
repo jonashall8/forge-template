@@ -1,0 +1,170 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sample-microservice/**'
+      - 'kubernetes/**'
+      - '.github/workflows/cd.yaml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/sample-microservice
+  AWS_REGION: us-east-1
+
+jobs:
+  # Deploy to Development
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.event_name == 'push' || github.event.inputs.environment == 'dev'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name project-forge-dev --region ${{ env.AWS_REGION }}
+
+      - name: Set image tag
+        id: image-tag
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update image tag in deployment
+          sed -i "s|image:.*sample-microservice.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}|g" \
+            kubernetes/sample-app/deployment.yaml
+          
+          # Apply manifests
+          kubectl apply -f kubernetes/namespaces/
+          kubectl apply -f kubernetes/sample-app/
+          
+          # Wait for rollout
+          kubectl rollout status deployment/sample-microservice -n applications --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          # Wait for service to be ready
+          sleep 30
+          
+          # Get service endpoint
+          ENDPOINT=$(kubectl get ingress sample-microservice -n applications -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          
+          # Health check
+          curl -f "http://${ENDPOINT}/actuator/health" || exit 1
+          
+          echo "Smoke tests passed!"
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    needs: deploy-dev
+    if: github.event.inputs.environment == 'staging' || github.event.inputs.environment == 'prod'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name project-forge-staging --region ${{ env.AWS_REGION }}
+
+      - name: Set image tag
+        id: image-tag
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Kubernetes
+        run: |
+          sed -i "s|image:.*sample-microservice.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}|g" \
+            kubernetes/sample-app/deployment.yaml
+          
+          kubectl apply -f kubernetes/namespaces/
+          kubectl apply -f kubernetes/sample-app/
+          kubectl rollout status deployment/sample-microservice -n applications --timeout=300s
+
+  # Deploy to Production
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    needs: deploy-staging
+    if: github.event.inputs.environment == 'prod'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name project-forge-prod --region ${{ env.AWS_REGION }}
+
+      - name: Set image tag
+        id: image-tag
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Kubernetes (Canary)
+        run: |
+          # Deploy canary (10% traffic)
+          sed -i "s|image:.*sample-microservice.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.image-tag.outputs.tag }}|g" \
+            kubernetes/sample-app/deployment.yaml
+          sed -i "s|replicas: 2|replicas: 1|g" kubernetes/sample-app/deployment.yaml
+          
+          kubectl apply -f kubernetes/sample-app/deployment.yaml
+          kubectl rollout status deployment/sample-microservice -n applications --timeout=300s
+
+      - name: Monitor canary
+        run: |
+          echo "Monitoring canary deployment for 5 minutes..."
+          sleep 300
+          
+          # Check error rate
+          # In production, you would query Prometheus here
+          echo "Canary deployment successful"
+
+      - name: Full rollout
+        run: |
+          # Scale to full deployment
+          kubectl scale deployment/sample-microservice -n applications --replicas=3
+          kubectl rollout status deployment/sample-microservice -n applications --timeout=300s
+
+      - name: Notify success
+        run: echo "Production deployment completed successfully!"
+

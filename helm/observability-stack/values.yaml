@@ -1,0 +1,151 @@
+# Project Forge Observability Stack Values
+# Default values for the complete observability stack
+
+global:
+  # Environment label
+  environment: dev
+  # Project name
+  project: project-forge
+
+# Prometheus Configuration
+prometheus:
+  enabled: true
+  server:
+    retention: 30d
+    persistentVolume:
+      enabled: true
+      size: 50Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1
+        memory: 2Gi
+  alertmanager:
+    enabled: true
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+  pushgateway:
+    enabled: false
+  nodeExporter:
+    enabled: true
+  kubeStateMetrics:
+    enabled: true
+
+# Grafana Configuration
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: admin  # Change in production!
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://{{ .Release.Name }}-prometheus-server
+          access: proxy
+          isDefault: true
+        - name: Elasticsearch
+          type: elasticsearch
+          url: http://{{ .Release.Name }}-elasticsearch:9200
+          access: proxy
+          database: "logs-*"
+          jsonData:
+            esVersion: "8.0.0"
+            timeField: "@timestamp"
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'project-forge'
+          orgId: 1
+          folder: 'Project Forge'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/project-forge
+
+# Elasticsearch Configuration
+elasticsearch:
+  enabled: true
+  replicas: 1
+  minimumMasterNodes: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2
+      memory: 4Gi
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 50Gi
+  esConfig:
+    elasticsearch.yml: |
+      cluster.name: "project-forge-logs"
+      network.host: 0.0.0.0
+      discovery.type: single-node
+      xpack.security.enabled: false
+
+# Logstash Configuration
+logstash:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+# Kibana Configuration
+kibana:
+  enabled: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+
+# Ingress Configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+    grafana: grafana.project-forge.local
+    kibana: kibana.project-forge.local
+    prometheus: prometheus.project-forge.local
+
+# Service Monitor for Spring Boot apps
+serviceMonitor:
+  enabled: true
+  namespace: applications
+  selector:
+    matchLabels:
+      prometheus.io/scrape: "true"
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+

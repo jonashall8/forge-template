@@ -1,0 +1,27 @@
+# Project Forge - Production Environment Configuration
+# Copy this file to terraform.tfvars and modify as needed
+
+aws_region   = "us-east-1"
+project_name = "project-forge"
+environment  = "prod"
+
+# VPC Configuration (Different CIDR from dev)
+vpc_cidr           = "10.1.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+# EKS Configuration
+kubernetes_version   = "1.29"
+enable_public_access = false  # Private cluster for production
+public_access_cidrs  = []
+
+# On-Demand Node Group
+node_instance_types = ["m5.large", "m5.xlarge"]
+node_desired_size   = 3
+node_min_size       = 3
+node_max_size       = 10
+
+# Spot Node Group
+spot_instance_types = ["m5.large", "m5.xlarge", "m4.large", "m4.xlarge"]
+spot_desired_size   = 2
+spot_max_size       = 10
+
