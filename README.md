@@ -1,14 +1,9 @@
-# Project Forge 🔥
+# Project Forge 
 
 > A Cloud-Native Enterprise Reference Blueprint for Platform Engineering
+## Overview
 
-[![CI Pipeline](https://github.com/yourusername/project-forge/workflows/CI%20Pipeline/badge.svg)](https://github.com/yourusername/project-forge/actions)
-[![Security Scan](https://github.com/yourusername/project-forge/workflows/Security%20Scan/badge.svg)](https://github.com/yourusername/project-forge/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-## 🎯 Overview
-
-Project Forge is a **"Golden Path"** template for building production-ready cloud-native applications. It provides:
+Project Forge is a template for building production-ready cloud-native applications. It provides:
 
 - **Infrastructure as Code** - Terraform modules for AWS (VPC, EKS, ECS)
 - **Observability SDK** - Java library with structured logging, metrics, and distributed tracing
@@ -16,7 +11,7 @@ Project Forge is a **"Golden Path"** template for building production-ready clou
 - **CI/CD Pipelines** - GitHub Actions workflows for build, scan, and deploy
 - **Security-First Design** - Encrypted resources, private subnets, and DevSecOps practices
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -47,7 +42,7 @@ Project Forge is a **"Golden Path"** template for building production-ready clou
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 project-forge/
@@ -74,7 +69,7 @@ project-forge/
 └── scripts/                     # Utility scripts
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -119,7 +114,7 @@ docker build -t sample-microservice:latest .
 kubectl apply -f kubernetes/sample-app/
 ```
 
-## 📊 Observability Features
+##  Observability Features
 
 ### Structured Logging (ELK Stack)
 - JSON-formatted logs for machine parsing
@@ -138,33 +133,13 @@ kubectl apply -f kubernetes/sample-app/
 - Service dependency mapping
 - Latency analysis
 
-## 🔒 Security Features
+##  Security Features
 
 - **Encrypted S3 Buckets** - AES-256 encryption at rest
 - **Private Subnets** - Workloads isolated from public internet
 - **Security Groups** - Principle of least privilege
 - **IAM Roles** - Fine-grained access control
 - **Container Scanning** - Trivy integration in CI/CD
-
-## 📈 For Recruiters
-
-This project demonstrates proficiency in:
-
-| Skill Area | Technologies |
-|------------|--------------|
-| Cloud Platforms | AWS (VPC, EKS, ECS, S3, IAM, CloudWatch) |
-| Infrastructure as Code | Terraform, Terraform Modules |
-| Container Orchestration | Kubernetes, Docker, Helm |
-| Observability | ELK Stack, Prometheus, Grafana, OpenTelemetry |
-| CI/CD | GitHub Actions, Security Scanning |
-| Programming | Java 17, Spring Boot, Maven |
-| DevSecOps | Trivy, SAST, Container Security |
-
-## 📝 Resume Bullet Points (STAR Format)
-
-> • Engineered cloud-native platform blueprint using Terraform, EKS, and observability stack, reducing new service onboarding time by 80%
-
-> • Implemented enterprise-grade monitoring with ELK Stack and Prometheus/Grafana, enabling real-time visibility across distributed microservices
 
 ## 📄 License
 
