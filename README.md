@@ -141,15 +141,9 @@ kubectl apply -f kubernetes/sample-app/
 - **IAM Roles** - Fine-grained access control
 - **Container Scanning** - Trivy integration in CI/CD
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
 ---
-
-**Built with ❤️ for Platform Engineering**
 
