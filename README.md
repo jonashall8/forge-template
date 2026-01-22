@@ -11,37 +11,6 @@ Project Forge is a template for building production-ready cloud-native applicati
 - **CI/CD Pipelines** - GitHub Actions workflows for build, scan, and deploy
 - **Security-First Design** - Encrypted resources, private subnets, and DevSecOps practices
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AWS Cloud                                 │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    VPC (10.0.0.0/16)                       │  │
-│  │  ┌─────────────────┐         ┌─────────────────┐          │  │
-│  │  │  Public Subnet  │         │  Public Subnet  │          │  │
-│  │  │   (10.0.1.0/24) │         │   (10.0.2.0/24) │          │  │
-│  │  │   NAT Gateway   │         │   NAT Gateway   │          │  │
-│  │  └────────┬────────┘         └────────┬────────┘          │  │
-│  │           │                           │                    │  │
-│  │  ┌────────▼────────┐         ┌────────▼────────┐          │  │
-│  │  │ Private Subnet  │         │ Private Subnet  │          │  │
-│  │  │  (10.0.10.0/24) │         │  (10.0.20.0/24) │          │  │
-│  │  │                 │         │                 │          │  │
-│  │  │  ┌───────────┐  │         │  ┌───────────┐  │          │  │
-│  │  │  │    EKS    │  │         │  │    EKS    │  │          │  │
-│  │  │  │   Nodes   │  │         │  │   Nodes   │  │          │  │
-│  │  │  └───────────┘  │         │  └───────────┘  │          │  │
-│  │  └─────────────────┘         └─────────────────┘          │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │   S3 Bucket     │  │   DynamoDB      │  │   CloudWatch    │  │
-│  │ (Terraform State)│  │ (State Locking) │  │   (Logs)        │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
 ##  Project Structure
 
 ```
